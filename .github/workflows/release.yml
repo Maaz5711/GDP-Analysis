@@ -28,13 +28,14 @@ jobs:
       run: |
         python .github/scripts/generate_images.py
 
-    - name: Update "Latest" Release
-      uses: softprops/action-gh-release@v1
+    - name: Update Latest Release
+      uses: ncipollo/release-action@v1
       with:
-        tag_name: latest  
-        name: Latest Graphs   
-        files: output_charts/*.png
-        draft: false
-        prerelease: false
+        tag: latest
+        name: Latest Graphs
+        artifacts: "output_charts/*.png"
+        allowUpdates: true
+        removeArtifacts: true
+        makeLatest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
