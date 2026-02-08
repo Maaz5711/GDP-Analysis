@@ -63,8 +63,7 @@ NON_COUNTRY_NAMES = {
 
 def get_all_regions(data):
     all_regions = set(map(lambda row: row["Region"], data))
-    good_regions = sorted(list(filter(lambda r: r in valid_regions, all_regions))) #filter
-    return good_regions
+    return sorted(filter(lambda r: r in valid_regions, all_regions))
 
 
 def get_latest_year(data):
@@ -92,8 +91,7 @@ def plot_regional_histogram(ax, data, region, year):
             ax.text(0.5, 0.5, "No data", ha="center", va="center")
             return
 
-        top_country_row = max(year_data, key=lambda x: x["Value"])
-        top_country = top_country_row["Country"]
+        top_country = max(year_data, key=lambda x: x["Value"])["Country"]
 
     # Get all years of GDP data for that country
     country_data = list(filter(lambda row: row["Country"] == top_country, region_data))
@@ -106,7 +104,14 @@ def plot_regional_histogram(ax, data, region, year):
     ax.set_title("GDP Growth - " + top_country)
     ax.set_xlabel("Year")
     ax.set_ylabel("GDP (Billion $)")
-    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+    ax.grid(True, axis="both", linestyle="--", alpha=0.5)
+
+    # Show current GDP of the displayed country in top left
+    ax.text(
+        0.03, 0.95, "Current GDP: $" + str(int(country_data[-1]["Value"])),
+        transform=ax.transAxes, fontsize=8, fontweight="bold",
+        va="top", ha="left",
+    )
 
 #the right one
 def plot_regional_line(ax, data, region):
@@ -115,7 +120,7 @@ def plot_regional_line(ax, data, region):
 
     region_data = processor.filter_by_region(data, region)
 
-    years_set = sorted(list(set(map(lambda row: row["Year"], region_data))))
+    years_set = sorted(set(map(lambda row: row["Year"], region_data)))
 
     calc_year_total = (
         lambda y: processor.calculate_sum(
@@ -139,20 +144,17 @@ def plot_international_pie(ax, data, year):
 
     year_data = processor.filter_by_year(data, year)
 
-    def get_region_total(r):
-        r_data = processor.filter_by_region(year_data, r)
-        vals = processor.get_values(r_data)
-        return processor.calculate_sum(vals)
+    region_totals = list(filter(
+        lambda x: x[1] > 0,
+        map(lambda r: (r, processor.calculate_sum(processor.get_values(processor.filter_by_region(year_data, r)))), valid_regions),
+    ))
 
-    region_totals = map(lambda r: (r, get_region_total(r)), valid_regions)
-    valid_data = list(filter(lambda x: x[1] > 0, region_totals))
-
-    if not valid_data:
+    if not region_totals:
         ax.text(0.5, 0.5, "No data", ha="center", va="center")
         return
 
-    region_names = list(map(lambda x: x[0], valid_data))
-    region_values = list(map(lambda x: x[1], valid_data))
+    region_names = list(map(lambda x: x[0], region_totals))
+    region_values = list(map(lambda x: x[1], region_totals))
 
     colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"]
 
@@ -224,7 +226,7 @@ def create_dashboard(data, regions, year):
 
     state = {"region": "International"}
 
-    region_ax = tools.axes([0.02, 0.3, 0.12, 0.45])
+    region_ax = tools.axes([0.02, 0.35, 0.12, 0.45])
     region_radio = RadioButtons(region_ax, options)
     region_ax.set_title("Select Region", fontweight="bold")
 
@@ -239,6 +241,22 @@ def create_dashboard(data, regions, year):
         transform=region_ax.transAxes,
     )
 
+    # Stats text below the radio buttons
+    stats_avg = fig.text(0.08, 0.28, "", fontsize=11, fontweight="bold", va="top", ha="center")
+    stats_total = fig.text(0.08, 0.18, "", fontsize=11, fontweight="bold", va="top", ha="center")
+
+    def update_stats():
+        current = state["region"]
+        latest = get_latest_year(data)
+        source = data if current == "International" else processor.filter_by_region(data, current)
+        year_data = processor.filter_by_year(source, latest)
+        year_data = list(filter(lambda row: row["Country"] not in NON_COUNTRY_NAMES, year_data))
+        vals = processor.get_values(year_data)
+        total = processor.calculate_sum(vals)
+        avg = processor.calculate_average(vals)
+        stats_avg.set_text("Avg GDP:\n$" + str(int(avg)))
+        stats_total.set_text("Sum of GDP:\n$" + str(int(total)))
+
     # Swap charts based on the current selection
     def update_charts():
         current = state["region"]
@@ -248,6 +266,7 @@ def create_dashboard(data, regions, year):
         else:
             plot_regional_histogram(ax1, data, current, year)
             plot_regional_line(ax2, data, current)
+        update_stats()
         fig.canvas.draw_idle()
 
     def on_region_change(label):
