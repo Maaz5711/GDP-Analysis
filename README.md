@@ -34,4 +34,4 @@ A beginner-friendly project that explores World Bank GDP data and turns it into 
 ## Data
 The sample dataset lives in `data/gdp.csv` and is loaded automatically when you run the app.
 
-GitHub Actions is set up to generate dashboard images as workflow artifacts.
+GitHub Actions runs the image generator on pushes and pull requests and uploads the charts as downloadable artifacts in the Actions tab.
