@@ -241,7 +241,7 @@ def create_dashboard(data, regions, year):
         transform=region_ax.transAxes,
     )
 
-    # Stats text below the radio buttons
+    # Stats text below the region selection buttons
     stats_avg = fig.text(0.08, 0.28, "", fontsize=11, fontweight="bold", va="top", ha="center")
     stats_total = fig.text(0.08, 0.18, "", fontsize=11, fontweight="bold", va="top", ha="center")
 
