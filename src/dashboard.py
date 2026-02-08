@@ -1,5 +1,5 @@
 import matplotlib.pyplot as tools
-from matplotlib.widgets import RadioButtons
+from matplotlib.widgets import RadioButtons #used for the side menu
 import processor
 
 valid_regions = [
@@ -11,6 +11,7 @@ valid_regions = [
     "Oceania",
 ]
 
+#to be excluded from the global bar chart
 NON_COUNTRY_NAMES = {
     "World",
     "Africa Eastern and Southern",
@@ -62,14 +63,14 @@ NON_COUNTRY_NAMES = {
 
 def get_all_regions(data):
     all_regions = set(map(lambda row: row["Region"], data))
-    good_regions = sorted(list(filter(lambda r: r in valid_regions, all_regions)))
+    good_regions = sorted(list(filter(lambda r: r in valid_regions, all_regions))) #filter
     return good_regions
 
 
 def get_latest_year(data):
     return max(map(lambda row: row["Year"], data))
 
-
+#the left graph in regional selection
 def plot_regional_histogram(ax, data, region, year):
     ax.clear()
     ax.set_aspect("auto")
@@ -107,7 +108,7 @@ def plot_regional_histogram(ax, data, region, year):
     ax.set_ylabel("GDP (Billion $)")
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
 
-
+#the right one
 def plot_regional_line(ax, data, region):
     ax.clear()
     ax.set_aspect("auto")
