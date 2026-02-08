@@ -1,1 +1,185 @@
 
+import matplotlib.pyplot as tools
+from matplotlib.widgets import RadioButtons
+import processor
+
+valid_regions = [
+    "Africa",
+    "Asia",
+    "Europe",
+    "North America",
+    "South America",
+    "Oceania",
+]
+
+def get_all_regions(data):
+    all_regions = set(map(lambda row: row["Region"], data))
+    good_regions = sorted(list(filter(lambda r: r in valid_regions, all_regions)))
+    return good_regions
+
+
+def get_latest_year(data):
+    return max(map(lambda row: row["Year"], data))
+
+
+def plot_regional_histogram(ax, data, region, year):
+    ax.clear()
+    ax.set_aspect("auto")
+    ax.set_frame_on(True)
+
+    region_data = processor.filter_by_region(data, region)
+    year_data = processor.filter_by_year(region_data, year)
+
+    raw_vals = processor.get_values(year_data)
+    values = list(map(lambda v: v / 1000000000, raw_vals))
+
+    ax.hist(values, bins=30, color="#4CAF50", alpha=0.7, edgecolor="black")
+    ax.set_title("GDP Distribution - " + region + " (" + str(year) + ")")
+    ax.set_xlabel("GDP (Billion $)")
+    ax.set_ylabel("Number of Countries")
+    ax.grid(True, axis="both", linestyle="--", alpha=0.5)
+
+
+def plot_regional_line(ax, data, region):
+    ax.clear()
+    ax.set_aspect("auto")
+
+    region_data = processor.filter_by_region(data, region)
+
+    years_set = sorted(list(set(map(lambda row: row["Year"], region_data))))
+
+    calc_year_total = (
+        lambda y: processor.calculate_sum(
+            processor.get_values(processor.filter_by_year(region_data, y))
+        )
+        / 1000000000000
+    )
+
+    gdp_per_year = list(map(calc_year_total, years_set))
+
+    ax.plot(years_set, gdp_per_year, marker="o", linewidth=2, color="#4CAF50")
+    ax.set_title("GDP Trend - " + region)
+    ax.set_xlabel("Year")
+    ax.set_ylabel("GDP (Trillion $)")
+    ax.grid(True, axis="both", linestyle="--", alpha=0.5)
+
+
+def plot_international_pie(ax, data, year):
+    ax.clear()
+    ax.set_frame_on(True)
+
+    year_data = processor.filter_by_year(data, year)
+
+    def get_region_total(r):
+        r_data = processor.filter_by_region(year_data, r)
+        vals = processor.get_values(r_data)
+        return processor.calculate_sum(vals)
+
+    region_totals = map(lambda r: (r, get_region_total(r)), valid_regions)
+    valid_data = list(filter(lambda x: x[1] > 0, region_totals))
+
+    if not valid_data:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center")
+        return
+
+    region_names = list(map(lambda x: x[0], valid_data))
+    region_values = list(map(lambda x: x[1], valid_data))
+
+    colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"]
+
+    wedges = ax.pie(
+        region_values,
+        colors=colors,
+        startangle=140,
+        autopct="%1.1f%%",
+        textprops={"fontsize": 6},
+    )[0]
+    ax.set_title("Regional GDP Distribution (" + str(year) + ")")
+    ax.legend(
+        wedges,
+        region_names,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.05),
+        ncol=3,
+        fontsize=7,
+        handlelength=1,
+        handleheight=1,
+    )
+
+
+def plot_international_bar(ax, data, year):
+    ax.clear()
+    ax.set_aspect("auto")
+
+    year_data = processor.filter_by_year(data, year)
+
+    if len(year_data) == 0:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center")
+        return
+
+    sorted_data = sorted(year_data, key=lambda x: x["Value"], reverse=True)
+    top_10 = sorted_data[:10]
+
+    countries = list(map(lambda item: item["Country"], top_10))
+    values = list(map(lambda item: item["Value"] / 1e12, top_10))
+
+    positions = list(range(len(countries)))
+
+    ax.bar(positions, values, color="#2196F3", alpha=0.8, edgecolor="black", width=0.7)
+    ax.set_title("Top 10 Global Economies (" + str(year) + ")")
+    ax.set_xlabel("Country")
+    ax.set_ylabel("GDP (Trillion $)")
+    ax.set_xticks(positions)
+    ax.set_xticklabels(countries, rotation=45, ha="right", fontsize=8)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+
+
+def create_dashboard(data, regions, year):
+    fig = tools.figure(figsize=(16, 8))
+
+    ax1 = tools.subplot(1, 2, 1)
+    ax2 = tools.subplot(1, 2, 2)
+    ax1.set_position([0.20, 0.15, 0.35, 0.70])
+    ax2.set_position([0.60, 0.15, 0.35, 0.70])
+
+    fig.text(
+        0.5, 0.96, "GDP ANALYSIS DASHBOARD", ha="center", fontsize=16, fontweight="bold"
+    )
+
+    options = ["International"] + regions
+
+    state = {"region": "International"}
+
+    region_ax = tools.axes([0.02, 0.3, 0.12, 0.45])
+    region_radio = RadioButtons(region_ax, options)
+    region_ax.set_title("Select Region", fontweight="bold")
+
+    num_options = len(options)
+    separator_y = 1 - (1.2 / num_options)
+    region_ax.plot(
+        [0, 1],
+        [separator_y, separator_y],
+        color="black",
+        linewidth=1.5,
+        transform=region_ax.transAxes,
+    )
+
+    def update_charts():
+        current = state["region"]
+        if current == "International":
+            plot_international_pie(ax1, data, year)
+            plot_international_bar(ax2, data, year)
+        else:
+            plot_regional_histogram(ax1, data, current, year)
+            plot_regional_line(ax2, data, current)
+        fig.canvas.draw_idle()
+
+    def on_region_change(label):
+        state["region"] = label
+        update_charts()
+
+    region_radio.on_clicked(on_region_change)
+    update_charts()
+    tools.show()
+
+
