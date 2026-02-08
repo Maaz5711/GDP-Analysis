@@ -1,0 +1,37 @@
+name: Auto-Release Graphs
+
+on:
+  push:
+    tags:
+      - "v*"  # Triggers only when you tag a version (e.g., v1.0)
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install -r .github/requirements.txt
+
+    - name: Generate Images
+      run: |
+        python .github/scripts/generate_images.py
+
+    - name: Create Release and Upload Images
+      uses: softprops/action-gh-release@v1
+      with:
+        files: output_charts/*.png
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
