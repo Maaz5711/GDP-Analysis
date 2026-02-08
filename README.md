@@ -26,7 +26,7 @@ This repository contains a Python-based GDP analysis dashboard built around Worl
 
 ### Interactive dashboard
 
-`main.py` references `DATA_FILE = "gdp.csv"`. To run the dashboard, either copy the dataset to the repo root or update `DATA_FILE` to `data/gdp.csv`, then run:
+`main.py` references `DATA_FILE = "gdp.csv"` by default (a file in the repo root). To run the dashboard with the provided dataset, either copy `data/gdp.csv` to `gdp.csv` in the root or update `DATA_FILE` to `data/gdp.csv`, then run:
 
 ```bash
 PYTHONPATH=src python main.py
