@@ -1,6 +1,6 @@
 name: Generate GDP Report
 
-on: push  # Runs every time you push code
+on: push
 
 jobs:
   build_charts:
