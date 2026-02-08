@@ -1,15 +1,14 @@
 name: Auto-Release Graphs
 
 on:
-  push:
-    tags:
-      - "v*"  # Triggers only when you tag a version (e.g., v1.0)
+  release:
+    types: [published]  # Triggers when you click "Publish Release" on the website
 
 permissions:
   contents: write
 
 jobs:
-  create-release:
+  release-charts:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,15 +20,17 @@ jobs:
       with:
         python-version: '3.9'
 
+    # Matches your screenshot: .github/requirements.txt
     - name: Install dependencies
       run: |
         pip install -r .github/requirements.txt
 
+    # Matches your screenshot: .github/scripts/generate_images.py
     - name: Generate Images
       run: |
         python .github/scripts/generate_images.py
 
-    - name: Create Release and Upload Images
+    - name: Upload Images to Release
       uses: softprops/action-gh-release@v1
       with:
         files: output_charts/*.png
