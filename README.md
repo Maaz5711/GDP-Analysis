@@ -5,7 +5,7 @@ A beginner-friendly project that explores World Bank GDP data and turns it into 
 ## What this project does
 - 📥 Loads GDP data from a CSV file.
 - 🌍 Lets you explore global and regional GDP trends.
-- 🏆 Highlights the biggest economies for a selected year.
+- 🏆 Highlights the top economies for a selected year.
 - 📊 Creates charts you can view live or save as images.
 
 ## What the dashboard shows
