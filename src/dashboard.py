@@ -175,7 +175,7 @@ def plot_international_pie(ax, data, year):
         handleheight=1,
     )
 
-#displays the top 10 countries
+#displays the top gdp countries
 def plot_international_bar(ax, data, year):
     ax.clear()
     ax.set_aspect("auto")
@@ -189,6 +189,7 @@ def plot_international_bar(ax, data, year):
         ax.text(0.5, 0.5, "No data", ha="center", va="center")
         return
 
+    # Sort by GDP and keep just the top 10
     sorted_data = sorted(year_data, key=lambda x: x["Value"], reverse=True)
     top_10 = sorted_data[:10]
 
@@ -214,6 +215,7 @@ def create_dashboard(data, regions, year):
     ax1.set_position([0.20, 0.15, 0.35, 0.70])
     ax2.set_position([0.60, 0.15, 0.35, 0.70])
 
+    # Big title at the top
     fig.text(
         0.5, 0.96, "GDP ANALYSIS DASHBOARD", ha="center", fontsize=16, fontweight="bold"
     )
@@ -226,16 +228,18 @@ def create_dashboard(data, regions, year):
     region_radio = RadioButtons(region_ax, options)
     region_ax.set_title("Select Region", fontweight="bold")
 
+    # Draw a separator line under the first option
     num_options = len(options)
     separator_y = 1 - (1.2 / num_options)
     region_ax.plot(
         [0, 1],
         [separator_y, separator_y],
         color="black",
-        linewidth=1.5,
+        linewidth=1,
         transform=region_ax.transAxes,
     )
 
+    # Swap charts based on the current selection
     def update_charts():
         current = state["region"]
         if current == "International":
@@ -250,6 +254,7 @@ def create_dashboard(data, regions, year):
         state["region"] = label
         update_charts()
 
+    #change the screen
     region_radio.on_clicked(on_region_change)
     update_charts()
     tools.show()
