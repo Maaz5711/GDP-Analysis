@@ -1,0 +1,31 @@
+name: Generate GDP Report
+
+on: push  # Runs every time you push code
+
+jobs:
+  build_charts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r src/requirements.txt
+
+      - name: Run Report Generator
+        run: |
+          # We run the script that saves PNGs instead of opening a window
+          python src/generate_report.py
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GDP-Charts
+          path: output/*.png
