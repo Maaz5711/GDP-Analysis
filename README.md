@@ -1,4 +1,4 @@
-# GDP Analysis Dashboard
+# GDP Analysis Dashboard!
 
 A beginner-friendly project that explores World Bank GDP data and turns it into clear, visual insights. It is built as a small, modular Python app so each part has a focused job.
 
