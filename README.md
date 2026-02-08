@@ -11,7 +11,7 @@ This repository contains a Python-based GDP analysis dashboard built around Worl
 - `src/generate_images.py` - saves dashboard charts to `output_charts/` (used in CI).
 - `src/generate_report.py` - scaffold for additional reporting.
 - `data/gdp.csv` - GDP dataset used by the scripts.
-- `config.json` - reserved for configuration-driven options (currently empty).
+- `config.json` - reserved for configuration-driven options (currently unused; default empty object).
 
 ## Requirements
 
@@ -46,4 +46,4 @@ Images are written to `output_charts/`.
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/main.yml` installs Matplotlib, runs `src/generate_images.py`, and uploads the resulting PNGs as the `GDP-Dashboard-Images` artifact on pushes and pull requests targeting `main`.
+On pushes and pull requests targeting `main`, the workflow runs `src/generate_images.py` and uploads the PNG artifacts.
