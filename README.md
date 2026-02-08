@@ -3,10 +3,15 @@
 A beginner-friendly project that explores World Bank GDP data and turns it into clear, visual insights. It is built as a small, modular Python app so each part has a focused job.
 
 ## What this project does
-- Loads GDP data from a CSV file.
-- Lets you explore global and regional GDP trends.
-- Highlights the top economies for a selected year.
-- Creates simple charts you can view live or save as images.
+- 📥 Loads GDP data from a CSV file.
+- 🌍 Lets you explore global and regional GDP trends.
+- 🏆 Highlights the biggest economies for a selected year.
+- 📊 Creates charts you can view live or save as images.
+
+## What the dashboard shows
+- 🖱️ A simple side panel lets you switch between international and regional views.
+- 🥧 The international view shows a pie chart of regional GDP shares and a bar chart of the top 10 economies.
+- 📈 The regional view shows a GDP growth bar chart for the leading country and a trend line for the region.
 
 ## How it works (short and simple)
 - **`main.py`** starts the app, loads the data, and opens the dashboard.
@@ -16,20 +21,6 @@ A beginner-friendly project that explores World Bank GDP data and turns it into 
 - **`generate_images.py`** saves the charts to files for reports.
 - **`generate_report.py`** is a starter script you can expand for custom reports.
 - **`config.json`** is a placeholder settings file if you want to add configuration-driven runs later (for example: region, year, or operation choices).
-
-## Quick start
-1. Install dependencies (the requirements file lives in `src/`):
-   ```bash
-   pip install -r src/requirements.txt
-   ```
-2. Run the dashboard:
-   ```bash
-   python main.py
-   ```
-3. (Optional) Save chart images:
-   ```bash
-   python src/generate_images.py
-   ```
 
 ## Data
 The sample dataset lives in `data/gdp.csv` and is loaded automatically when you run the app.
