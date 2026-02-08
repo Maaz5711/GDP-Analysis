@@ -132,7 +132,7 @@ def plot_regional_line(ax, data, region):
     ax.set_ylabel("GDP (Trillion $)")
     ax.grid(True, axis="both", linestyle="--", alpha=0.5)
 
-
+#uses the continents from the csv
 def plot_international_pie(ax, data, year):
     ax.clear()
     ax.set_frame_on(True)
@@ -175,7 +175,7 @@ def plot_international_pie(ax, data, year):
         handleheight=1,
     )
 
-
+#displays the top 10 countries
 def plot_international_bar(ax, data, year):
     ax.clear()
     ax.set_aspect("auto")
@@ -205,7 +205,7 @@ def plot_international_bar(ax, data, year):
     ax.set_xticklabels(countries, rotation=45, ha="right", fontsize=8)
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
 
-
+#the selective menu on the left
 def create_dashboard(data, regions, year):
     fig = tools.figure(figsize=(16, 8))
 
