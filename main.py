@@ -1,7 +1,7 @@
 import loader
 import dashboard
 
-DATA_FILE = "data.csv"
+DATA_FILE = "gdp.csv"
 
 data = loader.load_data(DATA_FILE)
 regions = dashboard.get_all_regions(data)
