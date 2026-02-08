@@ -1,14 +1,15 @@
-name: Auto-Release Graphs
+name: Auto-Update Latest Release
 
+# TRIGGER: Runs every time you push code to main
 on:
-  release:
-    types: [published]  # Triggers when you click "Publish Release" on the website
+  push:
+    branches: [ "main" ]
 
 permissions:
   contents: write
 
 jobs:
-  release-charts:
+  update-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,19 +21,22 @@ jobs:
       with:
         python-version: '3.9'
 
-    # Matches your screenshot: .github/requirements.txt
     - name: Install dependencies
       run: |
         pip install -r .github/requirements.txt
 
-    # Matches your screenshot: .github/scripts/generate_images.py
     - name: Generate Images
       run: |
         python .github/scripts/generate_images.py
 
-    - name: Upload Images to Release
+    # THIS SECTION IS NEW: It updates a tag called "latest" automatically
+    - name: Update "Latest" Release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: latest      # Always updates the same tag
+        name: Latest Graphs   # The title of the release
         files: output_charts/*.png
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
