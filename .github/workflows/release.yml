@@ -1,6 +1,5 @@
 name: Auto-Update Latest Release
 
-# TRIGGER: Runs every time you push code to main
 on:
   push:
     branches: [ "main" ]
@@ -29,12 +28,11 @@ jobs:
       run: |
         python .github/scripts/generate_images.py
 
-    # THIS SECTION IS NEW: It updates a tag called "latest" automatically
     - name: Update "Latest" Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: latest      # Always updates the same tag
-        name: Latest Graphs   # The title of the release
+        tag_name: latest  
+        name: Latest Graphs   
         files: output_charts/*.png
         draft: false
         prerelease: false
