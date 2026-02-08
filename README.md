@@ -4,7 +4,7 @@ This repository contains a Python-based GDP analysis dashboard built around Worl
 
 ## Repository layout
 
-- `main.py` - entry point for the interactive dashboard (expects a GDP CSV file path and `PYTHONPATH` setup).
+- `main.py` - entry point for the interactive dashboard (uses a hardcoded `DATA_FILE` path to a GDP CSV and requires `PYTHONPATH` setup).
 - `src/loader.py` - CSV loading and data cleaning logic.
 - `src/processor.py` - filters and summary calculations.
 - `src/dashboard.py` - plotting logic and interactive dashboard UI.
