@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as tools
 from matplotlib.widgets import RadioButtons
 import processor
@@ -11,6 +10,55 @@ valid_regions = [
     "South America",
     "Oceania",
 ]
+
+NON_COUNTRY_NAMES = {
+    "World",
+    "Africa Eastern and Southern",
+    "Africa Western and Central",
+    "Arab World",
+    "Caribbean small states",
+    "Central Europe and the Baltics",
+    "Early-demographic dividend",
+    "East Asia & Pacific",
+    "East Asia & Pacific (IDA & IBRD countries)",
+    "East Asia & Pacific (excluding high income)",
+    "Euro area",
+    "Europe & Central Asia",
+    "Europe & Central Asia (IDA & IBRD countries)",
+    "Europe & Central Asia (excluding high income)",
+    "European Union",
+    "High income",
+    "IBRD only",
+    "IDA & IBRD total",
+    "IDA blend",
+    "IDA only",
+    "IDA total",
+    "Late-demographic dividend",
+    "Latin America & Caribbean",
+    "Latin America & Caribbean (excluding high income)",
+    "Latin America & the Caribbean (IDA & IBRD countries)",
+    "Low & middle income",
+    "Low income",
+    "Lower middle income",
+    "Middle East, North Africa, Afghanistan & Pakistan",
+    "Middle East, North Africa, Afghanistan & Pakistan (IDA & IBRD)",
+    "Middle East, North Africa, Afghanistan & Pakistan (excluding high income)",
+    "Middle income",
+    "North America",
+    "OECD members",
+    "Other small states",
+    "Pacific island small states",
+    "Post-demographic dividend",
+    "Pre-demographic dividend",
+    "Small states",
+    "South Asia",
+    "South Asia (IDA & IBRD)",
+    "Sub-Saharan Africa",
+    "Sub-Saharan Africa (IDA & IBRD countries)",
+    "Sub-Saharan Africa (excluding high income)",
+    "Upper middle income",
+    "West Bank and Gaza",
+}
 
 def get_all_regions(data):
     all_regions = set(map(lambda row: row["Region"], data))
@@ -28,16 +76,36 @@ def plot_regional_histogram(ax, data, region, year):
     ax.set_frame_on(True)
 
     region_data = processor.filter_by_region(data, region)
-    year_data = processor.filter_by_year(region_data, year)
 
-    raw_vals = processor.get_values(year_data)
-    values = list(map(lambda v: v / 1000000000, raw_vals))
+    # Special condition: if Asia is selected, show Pakistan
+    if region == "Asia":
+        top_country = "Pakistan"
+    else:
+        # Find the country with the biggest GDP in the current year
+        year_data = processor.filter_by_year(region_data, year)
+        year_data = list(
+            filter(lambda row: row["Country"] not in NON_COUNTRY_NAMES, year_data)
+        )
 
-    ax.hist(values, bins=30, color="#4CAF50", alpha=0.7, edgecolor="black")
-    ax.set_title("GDP Distribution - " + region + " (" + str(year) + ")")
-    ax.set_xlabel("GDP (Billion $)")
-    ax.set_ylabel("Number of Countries")
-    ax.grid(True, axis="both", linestyle="--", alpha=0.5)
+        if len(year_data) == 0:
+            ax.text(0.5, 0.5, "No data", ha="center", va="center")
+            return
+
+        top_country_row = max(year_data, key=lambda x: x["Value"])
+        top_country = top_country_row["Country"]
+
+    # Get all years of GDP data for that country
+    country_data = list(filter(lambda row: row["Country"] == top_country, region_data))
+    country_data = sorted(country_data, key=lambda x: x["Year"])
+
+    years = list(map(lambda row: row["Year"], country_data))
+    values = list(map(lambda row: row["Value"] / 1e9, country_data))
+
+    ax.bar(years, values, color="#4CAF50", alpha=0.7, edgecolor="black", width=0.8)
+    ax.set_title("GDP Growth - " + top_country)
+    ax.set_xlabel("Year")
+    ax.set_ylabel("GDP (Billion $)")
+    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
 
 
 def plot_regional_line(ax, data, region):
@@ -57,7 +125,7 @@ def plot_regional_line(ax, data, region):
 
     gdp_per_year = list(map(calc_year_total, years_set))
 
-    ax.plot(years_set, gdp_per_year, marker="o", linewidth=2, color="#4CAF50")
+    ax.plot(years_set, gdp_per_year, marker=".", linewidth=2, color="#4CAF50")
     ax.set_title("GDP Trend - " + region)
     ax.set_xlabel("Year")
     ax.set_ylabel("GDP (Trillion $)")
@@ -112,6 +180,9 @@ def plot_international_bar(ax, data, year):
     ax.set_aspect("auto")
 
     year_data = processor.filter_by_year(data, year)
+    year_data = list(
+        filter(lambda row: row["Country"] not in NON_COUNTRY_NAMES, year_data)
+    )
 
     if len(year_data) == 0:
         ax.text(0.5, 0.5, "No data", ha="center", va="center")
@@ -181,5 +252,3 @@ def create_dashboard(data, regions, year):
     region_radio.on_clicked(on_region_change)
     update_charts()
     tools.show()
-
-
