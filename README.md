@@ -15,10 +15,10 @@ A beginner-friendly project that explores World Bank GDP data and turns it into 
 - **`dashboard.py`** draws the charts and handles the region selector.
 - **`generate_images.py`** saves the charts to files for reports.
 - **`generate_report.py`** is a starter script you can expand for custom reports.
-- **`config.json`** is a small settings file you can fill in if you want to extend the app later.
+- **`config.json`** is a placeholder settings file if you want to add configuration-driven runs later (for example: region, year, or operation choices).
 
 ## Quick start
-1. Install dependencies:
+1. Install dependencies (the requirements file lives in `src/`):
    ```bash
    pip install -r src/requirements.txt
    ```
