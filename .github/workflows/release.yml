@@ -1,4 +1,4 @@
-name: Auto-Update Latest Release
+name: Debug & Release Graphs
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  update-release:
+  debug-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,9 +24,17 @@ jobs:
       run: |
         pip install -r .github/requirements.txt
 
-    - name: Generate Images
+    - name: Generate Images (With Debugging)
       run: |
+        echo "Starting Generation..."
         python .github/scripts/generate_images.py
+        echo "Generation Complete."
+
+    # DEBUG STEP: This will show us exactly what was created
+    - name: Verify Output Files
+      run: |
+        echo "Listing files in output_charts folder:"
+        ls -R output_charts || echo "Folder not found!"
 
     - name: Update Latest Release
       uses: ncipollo/release-action@v1
