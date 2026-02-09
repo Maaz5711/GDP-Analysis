@@ -13,7 +13,7 @@ A beginner-friendly project that explores World Bank GDP data and turns it into 
 - 🥧 The international view shows a pie chart of regional GDP shares and a bar chart of the top 10 economies.
 - 📈 The regional view shows a GDP growth bar chart for the leading country and a trend line for the region.
 
-## How it works (short and simple)
+## How it works
 - **`main.py`** starts the app, loads the data, and opens the dashboard.
 - **`loader.py`** reads and cleans the CSV file.
 - **`processor.py`** provides filtering and basic calculations.
