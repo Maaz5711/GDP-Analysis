@@ -1,6 +1,6 @@
 import matplotlib.pyplot as tools
 from matplotlib.widgets import RadioButtons #used for the side menu
-import processor
+import src.processor as processor
 
 valid_regions = [
     "Africa",

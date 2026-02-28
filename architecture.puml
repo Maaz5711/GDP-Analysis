@@ -1,0 +1,89 @@
+@startuml GDP Analysis - Phase 2 Architecture
+
+title GDP Analysis - Modular Architecture with DIP
+skinparam packageStyle rectangle
+
+' ── The Core Module (The Domain) ──
+package "core" {
+    interface "DataSink (Protocol)" as DS {
+        +write(title: str, records: list[dict]) : None
+    }
+
+    interface "PipelineService (Protocol)" as PS {
+        +execute(raw_data: list[dict]) : None
+    }
+
+    class "TransformationEngine" as TE {
+        -sink : DataSink
+        -config : dict
+        +execute(raw_data: list[dict]) : None
+        -_run_top_10(data, params)
+        -_run_bottom_10(data, params)
+        -_run_growth_rate(data, params)
+        -_run_avg_gdp(data, params)
+        -_run_global_trend(data, params)
+        -_run_fastest_growing(data, params)
+        -_run_decline(data, params)
+        -_run_contribution(data, params)
+    }
+
+    TE ..|> PS : implements
+    TE --> DS : uses (injected)
+}
+
+' ── The Plugins Module ──
+package "plugins" {
+    class "CSVReader" as CR {
+        -service : PipelineService
+        -filepath : str
+        +run() : None
+    }
+
+    class "JSONReader" as JR {
+        -service : PipelineService
+        -filepath : str
+        +run() : None
+    }
+
+    class "ConsoleWriter" as CW {
+        +write(title: str, records: list[dict]) : None
+    }
+
+    class "GraphicsChartWriter" as GW {
+        +write(title: str, records: list[dict]) : None
+    }
+
+    CR --> PS : calls execute()
+    JR --> PS : calls execute()
+    CW ..|> DS : satisfies
+    GW ..|> DS : satisfies
+}
+
+' ── The Main Module (Orchestrator) ──
+package "main.py" {
+    class "bootstrap()" as B {
+        Loads config.json
+        Creates Sink, Engine, Reader
+        Calls reader.run()
+    }
+}
+
+B --> CR : creates
+B --> JR : creates
+B --> CW : creates
+B --> GW : creates
+B --> TE : creates
+
+note right of DS
+  "Owned by Core"
+  Output modules must
+  satisfy this contract
+end note
+
+note right of PS
+  "Owned by Core"
+  Input modules call
+  this contract
+end note
+
+@enduml

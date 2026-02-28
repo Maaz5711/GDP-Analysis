@@ -1,0 +1,54 @@
+{
+    "input": {
+        "type": "csv",
+        "path": "data/gdp.csv"
+    },
+    "output": {
+        "type": "chart"
+    },
+    "analyses": [
+        {
+            "name": "top_10",
+            "continent": "Asia",
+            "year": 2023
+        },
+        {
+            "name": "bottom_10",
+            "continent": "Africa",
+            "year": 2023
+        },
+        {
+            "name": "growth_rate",
+            "continent": "Europe",
+            "start_year": 2010,
+            "end_year": 2023
+        },
+        {
+            "name": "avg_gdp_by_continent",
+            "start_year": 2010,
+            "end_year": 2023
+        },
+        {
+            "name": "global_gdp_trend",
+            "start_year": 2000,
+            "end_year": 2023
+        },
+        {
+            "name": "fastest_growing_continent",
+            "start_year": 2010,
+            "end_year": 2023
+        },
+        {
+            "name": "consistent_decline",
+            "last_x_years": 5
+        },
+        {
+            "name": "continent_contribution",
+            "start_year": 2010,
+            "end_year": 2023
+        },
+        {
+            "name": "dashboard"
+        }
+    ]
+}
