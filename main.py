@@ -1,18 +1,9 @@
-"""
-Main Module (The Orchestrator)
-- Reads config.json
-- Uses a dictionary factory to pick the right Input and Output classes
-- Wires everything together using Dependency Injection
-- Starts the pipeline
-"""
 import json
-from core.engine import TransformationEngine
+from Core.engine import TransformationEngine
 from plugins.inputs import CSVReader, JSONReader
 from plugins.outputs import ConsoleWriter, GraphicsChartWriter
 
-
-# ── Dictionary-based Factory (maps config strings to classes) ──
-
+# maps config strings to actual classes
 INPUT_DRIVERS = {
     "csv": CSVReader,
     "json": JSONReader,
@@ -25,28 +16,30 @@ OUTPUT_DRIVERS = {
 
 
 def bootstrap():
-    """Load config, create components, wire them together, and run."""
-
-    # 1. Load config
+    # load config
     with open("config.json", "r") as f:
         config = json.load(f)
 
-    # 2. Create the Output (Sink)
+    # create the output writer
     output_type = config["output"]["type"]
     SinkClass = OUTPUT_DRIVERS[output_type]
     sink = SinkClass()
 
-    # 3. Create the Core Engine (inject the Sink)
+    # create the engine and inject the sink into it
     engine = TransformationEngine(sink, config)
 
-    # 4. Create the Input Source (inject the Engine as the service)
+    # create the input reader and inject the engine into it
     input_type = config["input"]["type"]
     input_path = config["input"]["path"]
     ReaderClass = INPUT_DRIVERS[input_type]
     reader = ReaderClass(engine, input_path)
 
-    # 5. Run — data flows: Reader → Engine → Sink
+    # run the pipeline
     reader.run()
+
+    # if using charts, show them
+    if hasattr(sink, "show"):
+        sink.show()
 
 
 if __name__ == "__main__":
