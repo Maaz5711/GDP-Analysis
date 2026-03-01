@@ -3,10 +3,7 @@ from matplotlib.widgets import RadioButtons
 
 
 class ConsoleWriter:
-    """
-    Outputs analysis results to the console as formatted text.
-    Satisfies the DataSink protocol (has a write method).
-    """
+    # Prints analysis results to the terminal.
 
     def write(self, title, records):
         print("\n" + "=" * 60)
@@ -17,281 +14,227 @@ class ConsoleWriter:
             print("  No data found.")
             return
 
-        # print each record as a simple line
         for i, record in enumerate(records, 1):
             parts = []
             for key, value in record.items():
-                # format large numbers with commas
                 if isinstance(value, float) and value > 1000:
                     parts.append(key + ": $" + "{:,.0f}".format(value))
                 else:
                     parts.append(key + ": " + str(value))
-
             print("  " + str(i) + ". " + " | ".join(parts))
 
         print()
 
 
 class GraphicsChartWriter:
-    """
-    Outputs analysis results as the original interactive dashboard.
-    Satisfies the DataSink protocol (has a write method).
-    Reuses the same dashboard from Phase 1 (src/dashboard.py).
-    """
+    # Shows all analysis results in one window.
+    # Radio buttons on the left let the user switch between charts.
+    
 
-    # valid regions for the dashboard
-    valid_regions = [
-        "Africa", "Asia", "Europe",
-        "North America", "South America", "Oceania",
-    ]
-
-    # aggregate entries to exclude from bar charts
-    NON_COUNTRY_NAMES = {
-        "World", "Africa Eastern and Southern", "Africa Western and Central",
-        "Arab World", "Caribbean small states",
-        "Central Europe and the Baltics", "Early-demographic dividend",
-        "East Asia & Pacific", "East Asia & Pacific (IDA & IBRD countries)",
-        "East Asia & Pacific (excluding high income)", "Euro area",
-        "Europe & Central Asia", "Europe & Central Asia (IDA & IBRD countries)",
-        "Europe & Central Asia (excluding high income)", "European Union",
-        "High income", "IBRD only", "IDA & IBRD total", "IDA blend",
-        "IDA only", "IDA total", "Late-demographic dividend",
-        "Latin America & Caribbean",
-        "Latin America & Caribbean (excluding high income)",
-        "Latin America & the Caribbean (IDA & IBRD countries)",
-        "Low & middle income", "Low income", "Lower middle income",
-        "Middle East, North Africa, Afghanistan & Pakistan",
-        "Middle East, North Africa, Afghanistan & Pakistan (IDA & IBRD)",
-        "Middle East, North Africa, Afghanistan & Pakistan (excluding high income)",
-        "Middle income", "North America", "OECD members",
-        "Other small states", "Pacific island small states",
-        "Post-demographic dividend", "Pre-demographic dividend",
-        "Small states", "South Asia", "South Asia (IDA & IBRD)",
-        "Sub-Saharan Africa", "Sub-Saharan Africa (IDA & IBRD countries)",
-        "Sub-Saharan Africa (excluding high income)", "Upper middle income",
-        "West Bank and Gaza",
-    }
+    def __init__(self):
+        self.results = []
 
     def write(self, title, records):
-        """Creates the interactive dashboard with the full dataset."""
-        if not records:
-            print("  No data to chart.")
+        # just store the results for now, we draw them in show()
+        self.results.append({"title": title, "records": records})
+
+    def show(self):
+        if not self.results:
             return
 
-        data = records
-        regions = self._get_all_regions(data)
-        year = self._get_latest_year(data)
-        self._create_dashboard(data, regions, year)
-
-    # ── Helper functions (same as src/processor.py) ──
-
-    def _filter_by_region(self, data, region_name):
-        return [row for row in data if row["Region"] == region_name]
-
-    def _filter_by_year(self, data, year):
-        return [row for row in data if row["Year"] == year]
-
-    def _get_values(self, data):
-        return [row["Value"] for row in data]
-
-    def _calculate_sum(self, values):
-        if not values:
-            return 0.0
-        return sum(values)
-
-    def _calculate_average(self, values):
-        if not values:
-            return 0.0
-        return sum(values) / len(values)
-
-    def _get_all_regions(self, data):
-        all_regions = set(map(lambda row: row["Region"], data))
-        return sorted(filter(lambda r: r in self.valid_regions, all_regions))
-
-    def _get_latest_year(self, data):
-        return max(map(lambda row: row["Year"], data))
-
-    # ── Chart functions (same as src/dashboard.py) ──
-
-    def _plot_regional_histogram(self, ax, data, region, year):
-        ax.clear()
-        ax.set_aspect("auto")
-        ax.set_frame_on(True)
-
-        region_data = self._filter_by_region(data, region)
-
-        # Special condition: if Asia is selected, show Pakistan
-        if region == "Asia":
-            top_country = "Pakistan"
-        else:
-            year_data = self._filter_by_year(region_data, year)
-            year_data = list(
-                filter(lambda row: row["Country"] not in self.NON_COUNTRY_NAMES, year_data)
-            )
-            if len(year_data) == 0:
-                ax.text(0.5, 0.5, "No data", ha="center", va="center")
-                return
-            top_country = max(year_data, key=lambda x: x["Value"])["Country"]
-
-        country_data = list(filter(lambda row: row["Country"] == top_country, region_data))
-        country_data = sorted(country_data, key=lambda x: x["Year"])
-
-        years = list(map(lambda row: row["Year"], country_data))
-        values = list(map(lambda row: row["Value"] / 1e9, country_data))
-
-        ax.bar(years, values, color="#4CAF50", alpha=0.7, edgecolor="black", width=0.8)
-        ax.set_title("GDP Growth - " + top_country)
-        ax.set_xlabel("Year")
-        ax.set_ylabel("GDP (Billion $)")
-        ax.grid(True, axis="both", linestyle="--", alpha=0.5)
-
-        ax.text(
-            0.03, 0.95, "Current GDP: $" + str(int(country_data[-1]["Value"])),
-            transform=ax.transAxes, fontsize=8, fontweight="bold",
-            va="top", ha="left",
-        )
-
-    def _plot_regional_line(self, ax, data, region):
-        ax.clear()
-        ax.set_aspect("auto")
-
-        region_data = self._filter_by_region(data, region)
-        years_set = sorted(set(map(lambda row: row["Year"], region_data)))
-
-        calc_year_total = (
-            lambda y: self._calculate_sum(
-                self._get_values(self._filter_by_year(region_data, y))
-            )
-            / 1000000000000
-        )
-
-        gdp_per_year = list(map(calc_year_total, years_set))
-
-        ax.plot(years_set, gdp_per_year, marker=".", linewidth=2, color="#4CAF50")
-        ax.set_title("GDP Trend - " + region)
-        ax.set_xlabel("Year")
-        ax.set_ylabel("GDP (Trillion $)")
-        ax.grid(True, axis="both", linestyle="--", alpha=0.5)
-
-    def _plot_international_pie(self, ax, data, year):
-        ax.clear()
-        ax.set_frame_on(True)
-
-        year_data = self._filter_by_year(data, year)
-
-        region_totals = list(filter(
-            lambda x: x[1] > 0,
-            map(lambda r: (r, self._calculate_sum(self._get_values(self._filter_by_region(year_data, r)))), self.valid_regions),
-        ))
-
-        if not region_totals:
-            ax.text(0.5, 0.5, "No data", ha="center", va="center")
-            return
-
-        region_names = list(map(lambda x: x[0], region_totals))
-        region_values = list(map(lambda x: x[1], region_totals))
-
-        colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"]
-
-        wedges = ax.pie(
-            region_values, colors=colors, startangle=140,
-            autopct="%1.1f%%", textprops={"fontsize": 6},
-        )[0]
-        ax.set_title("Regional GDP Distribution (" + str(year) + ")")
-        ax.legend(
-            wedges, region_names, loc="upper center",
-            bbox_to_anchor=(0.5, -0.05), ncol=3, fontsize=7,
-            handlelength=1, handleheight=1,
-        )
-
-    def _plot_international_bar(self, ax, data, year):
-        ax.clear()
-        ax.set_aspect("auto")
-
-        year_data = self._filter_by_year(data, year)
-        year_data = list(
-            filter(lambda row: row["Country"] not in self.NON_COUNTRY_NAMES, year_data)
-        )
-
-        if len(year_data) == 0:
-            ax.text(0.5, 0.5, "No data", ha="center", va="center")
-            return
-
-        sorted_data = sorted(year_data, key=lambda x: x["Value"], reverse=True)
-        top_10 = sorted_data[:10]
-
-        countries = list(map(lambda item: item["Country"], top_10))
-        values = list(map(lambda item: item["Value"] / 1e12, top_10))
-        positions = list(range(len(countries)))
-
-        ax.bar(positions, values, color="#2196F3", alpha=0.8, edgecolor="black", width=0.7)
-        ax.set_title("Top 10 Global Economies (" + str(year) + ")")
-        ax.set_xlabel("Country")
-        ax.set_ylabel("GDP (Trillion $)")
-        ax.set_xticks(positions)
-        ax.set_xticklabels(countries, rotation=45, ha="right", fontsize=8)
-        ax.grid(True, axis="y", linestyle="--", alpha=0.5)
-
-    # ── The interactive dashboard (same as src/dashboard.py) ──
-
-    def _create_dashboard(self, data, regions, year):
         fig = plt.figure(figsize=(16, 8))
 
-        ax1 = plt.subplot(1, 2, 1)
-        ax2 = plt.subplot(1, 2, 2)
-        ax1.set_position([0.20, 0.15, 0.35, 0.70])
-        ax2.set_position([0.60, 0.15, 0.35, 0.70])
+        fig.text(0.55, 0.96, "GDP ANALYSIS DASHBOARD",
+                 ha="center", fontsize=16, fontweight="bold")
 
-        fig.text(
-            0.5, 0.96, "GDP ANALYSIS DASHBOARD",
-            ha="center", fontsize=16, fontweight="bold"
-        )
+        # radio buttons on the left side
+        option_labels = ["Option " + str(i + 1) for i in range(len(self.results))]
 
-        options = ["International"] + regions
-        state = {"region": "International"}
+        radio_ax = fig.add_axes([0.01, 0.25, 0.10, 0.55])
+        radio_ax.set_title("Select\nAnalysis", fontweight="bold", fontsize=9)
+        radio = RadioButtons(radio_ax, option_labels, activecolor="#4CAF50")
 
-        region_ax = plt.axes([0.02, 0.35, 0.12, 0.45])
-        region_radio = RadioButtons(region_ax, options)
-        region_ax.set_title("Select Region", fontweight="bold")
+        for label in radio.labels:
+            label.set_fontsize(8)
 
-        # separator line under first option
-        num_options = len(options)
-        separator_y = 1 - (1.2 / num_options)
-        region_ax.plot(
-            [0, 1], [separator_y, separator_y],
-            color="black", linewidth=1, transform=region_ax.transAxes,
-        )
+        # this function picks the right chart type and draws it
+        def draw_chart(index):
+            # remove old chart (but keep the radio buttons)
+            for a in fig.axes:
+                if a is not radio_ax:
+                    fig.delaxes(a)
 
-        stats_avg = fig.text(0.08, 0.28, "", fontsize=11, fontweight="bold", va="top", ha="center")
-        stats_total = fig.text(0.08, 0.18, "", fontsize=11, fontweight="bold", va="top", ha="center")
+            title = self.results[index]["title"]
+            records = self.results[index]["records"]
 
-        def update_stats():
-            current = state["region"]
-            latest = self._get_latest_year(data)
-            source = data if current == "International" else self._filter_by_region(data, current)
-            year_data = self._filter_by_year(source, latest)
-            year_data = list(filter(lambda row: row["Country"] not in self.NON_COUNTRY_NAMES, year_data))
-            vals = self._get_values(year_data)
-            total = self._calculate_sum(vals)
-            avg = self._calculate_average(vals)
-            stats_avg.set_text("Avg GDP:\n$" + str(int(avg)))
-            stats_total.set_text("Sum of GDP:\n$" + str(int(total)))
+            if not records:
+                ax = fig.add_axes([0.18, 0.10, 0.78, 0.80])
+                ax.text(0.5, 0.5, "No data found.", ha="center", va="center")
+                ax.set_title(title, fontsize=13, fontweight="bold")
+                ax.axis("off")
+                fig.canvas.draw_idle()
+                return
 
-        def update_charts():
-            current = state["region"]
-            if current == "International":
-                self._plot_international_pie(ax1, data, year)
-                self._plot_international_bar(ax2, data, year)
-            else:
-                self._plot_regional_histogram(ax1, data, current, year)
-                self._plot_regional_line(ax2, data, current)
-            update_stats()
+            if "Top 10" in title:
+                draw_bar(title, records, "Country", "GDP", "#2196F3")
+            elif "Bottom 10" in title:
+                draw_bar(title, records, "Country", "GDP", "#FF5722")
+            elif "Growth Rate" in title and "Continent" not in title:
+                draw_horizontal_bar(title, records, "Country", "Growth Rate (%)", "#4CAF50")
+            elif "Average GDP" in title:
+                draw_bar(title, records, "Continent", "Average GDP", "#9C27B0")
+            elif "Global GDP Trend" in title:
+                draw_line(title, records, "Year", "Total Global GDP")
+            elif "Fastest Growing" in title:
+                draw_bar(title, records, "Continent", "Growth Rate (%)", "#FF9800")
+            elif "Consistent" in title:
+                draw_decline_bar(title, records)
+            elif "Contribution" in title:
+                draw_pie(title, records, "Continent", "Contribution (%)")
+
             fig.canvas.draw_idle()
 
-        def on_region_change(label):
-            state["region"] = label
-            update_charts()
+        # chart drawing functions
 
-        region_radio.on_clicked(on_region_change)
-        update_charts()
+        def draw_bar(title, records, label_key, value_key, color):
+            ax = fig.add_axes([0.20, 0.18, 0.75, 0.70])
+
+            labels = [str(r[label_key]) for r in records]
+            values = [r[value_key] for r in records]
+
+            # show GDP in billions for readability
+            y_label = value_key
+            if value_key in ("GDP", "Average GDP"):
+                values = [v / 1e9 for v in values]
+                y_label = value_key + " (Billion $)"
+
+            bars = ax.bar(range(len(labels)), values, color=color,
+                          alpha=0.8, edgecolor="black", width=0.6)
+
+            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
+            ax.set_xlabel(label_key)
+            ax.set_ylabel(y_label)
+            ax.set_xticks(range(len(labels)))
+            ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=8)
+            ax.grid(True, axis="y", linestyle="--", alpha=0.4)
+
+            # put the value on top of each bar
+            for bar in bars:
+                height = bar.get_height()
+                if height > 0:
+                    ax.text(bar.get_x() + bar.get_width() / 2, height,
+                            "{:,.0f}".format(height),
+                            ha="center", va="bottom", fontsize=6)
+
+        def draw_horizontal_bar(title, records, label_key, value_key, color):
+            ax = fig.add_axes([0.28, 0.08, 0.67, 0.82])
+
+            # only show top 20 so it's readable
+            records = records[:20]
+            labels = [str(r[label_key]) for r in records][::-1]
+            values = [r[value_key] for r in records][::-1]
+
+            bars = ax.barh(range(len(labels)), values, color=color,
+                           alpha=0.8, edgecolor="black", height=0.6)
+
+            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
+            ax.set_xlabel(value_key)
+            ax.set_yticks(range(len(labels)))
+            ax.set_yticklabels(labels, fontsize=7)
+            ax.grid(True, axis="x", linestyle="--", alpha=0.4)
+
+            for bar in bars:
+                width = bar.get_width()
+                ax.text(width, bar.get_y() + bar.get_height() / 2,
+                        " " + str(round(width, 1)) + "%",
+                        ha="left", va="center", fontsize=6)
+
+        def draw_line(title, records, x_key, y_key):
+            ax = fig.add_axes([0.20, 0.15, 0.75, 0.73])
+
+            x = [r[x_key] for r in records]
+            y = [r[y_key] / 1e12 for r in records]  # show in trillions
+
+            ax.plot(x, y, marker="o", linewidth=2, color="#4CAF50", markersize=5)
+            ax.fill_between(x, y, alpha=0.15, color="#4CAF50")
+
+            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
+            ax.set_xlabel(x_key)
+            ax.set_ylabel(y_key + " (Trillion $)")
+            ax.grid(True, linestyle="--", alpha=0.4)
+
+            # label the first and last points
+            ax.annotate("{:,.1f}T".format(y[0]), (x[0], y[0]),
+                        textcoords="offset points", xytext=(0, 10),
+                        fontsize=8, ha="center")
+            ax.annotate("{:,.1f}T".format(y[-1]), (x[-1], y[-1]),
+                        textcoords="offset points", xytext=(0, 10),
+                        fontsize=8, ha="center")
+
+        def draw_pie(title, records, label_key, value_key):
+            ax = fig.add_axes([0.22, 0.05, 0.70, 0.85])
+            ax.set_aspect("equal")
+
+            labels = [r[label_key] for r in records]
+            values = [r[value_key] for r in records]
+            colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"]
+
+            wedges, texts, autotexts = ax.pie(
+                values, colors=colors, startangle=140,
+                autopct="%1.1f%%", textprops={"fontsize": 9},
+                pctdistance=0.75,
+            )
+
+            for t in autotexts:
+                t.set_fontweight("bold")
+
+            ax.set_title(title, fontsize=13, fontweight="bold", pad=15)
+            ax.legend(wedges, labels, loc="lower center",
+                      bbox_to_anchor=(0.5, -0.05), ncol=3, fontsize=9)
+
+        def draw_decline_bar(title, records):
+            if not records:
+                ax = fig.add_axes([0.18, 0.10, 0.78, 0.80])
+                ax.text(0.5, 0.5, "No declining countries found.",
+                        ha="center", va="center", fontsize=14)
+                ax.set_title(title, fontsize=13, fontweight="bold")
+                ax.axis("off")
+                return
+
+            ax = fig.add_axes([0.20, 0.18, 0.75, 0.70])
+
+            countries = [r["Country"] for r in records]
+            keys = [k for k in records[0].keys() if k != "Country"]
+            start_key = keys[0]
+            end_key = keys[1]
+
+            start_values = [r[start_key] / 1e9 for r in records]
+            end_values = [r[end_key] / 1e9 for r in records]
+
+            w = 0.35
+            positions = list(range(len(countries)))
+
+            ax.bar([p - w / 2 for p in positions], start_values, w,
+                   label=start_key, color="#42A5F5", edgecolor="black")
+            ax.bar([p + w / 2 for p in positions], end_values, w,
+                   label=end_key, color="#EF5350", edgecolor="black")
+
+            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
+            ax.set_xlabel("Country")
+            ax.set_ylabel("GDP (Billion $)")
+            ax.set_xticks(positions)
+            ax.set_xticklabels(countries, rotation=30, ha="right", fontsize=9)
+            ax.legend(fontsize=9)
+            ax.grid(True, axis="y", linestyle="--", alpha=0.4)
+
+        # when a radio button is clicked, redraw the chart
+
+        def on_select(label):
+            index = option_labels.index(label)
+            draw_chart(index)
+
+        radio.on_clicked(on_select)
+
+        # show the first chart by default
+        draw_chart(0)
         plt.show()
