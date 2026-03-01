@@ -1,5 +1,5 @@
-import loader
-import dashboard
+from src import loader
+from src import dashboard
 
 DATA_FILE = "gdp.csv" #name of the data file
 
