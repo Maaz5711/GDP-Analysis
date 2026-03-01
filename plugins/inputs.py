@@ -4,75 +4,67 @@ import os
 
 
 class CSVReader:
-    """
-    Reads GDP data from a CSV file and sends it to the pipeline.
-    Same logic as src/loader.py — reads wide CSV, converts to long format.
-    """
+    # Reads GDP data from a CSV file and sends it to the engine.
 
     def __init__(self, service, filepath):
-        self.service = service  # the engine (PipelineService)
+        self.service = service
         self.filepath = filepath
 
     def run(self):
-        """Read the CSV, clean it, and pass to the engine."""
-        raw_data = self._load_csv()
-        cleaned = self._clean_data(raw_data)
-        self.service.execute(cleaned)
+        raw_rows = self.read_csv()
+        long_format = self.convert_to_long_format(raw_rows)
+        self.service.execute(long_format)
 
-    def _load_csv(self):
+    def read_csv(self):
         if not os.path.exists(self.filepath):
             raise FileNotFoundError("File not found: " + self.filepath)
 
-        raw_data = []
-        with open(self.filepath, mode="r", encoding="utf-8") as f:
+        rows = []
+        with open(self.filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                raw_data.append(row)
-        return raw_data
+                rows.append(row)
+        return rows
 
-    def _clean_data(self, data):
-        """Convert wide format (one column per year) to long format."""
-        if not data:
+    def convert_to_long_format(self, rows):
+        # The CSV has one column per year (wide format).
+        # We convert it so each row is one country + one year (long format).
+        
+        if not rows:
             return []
 
-        # find all columns that are years
-        years = [key for key in data[0].keys() if key.isdigit()]
-        cleaned = []
+        # find which columns are years
+        year_columns = [col for col in rows[0].keys() if col.isdigit()]
+        result = []
 
-        for row in data:
-            for year in years:
-                value = row.get(year)
+        for row in rows:
+            for year in year_columns:
+                value = row.get(year, "")
 
-                # skip empty values
+                # skip empty cells
                 if value and value.strip() != "":
-                    value = value.replace(",", "")
-                    cleaned.append({
+                    result.append({
                         "Country": row["Country Name"],
                         "Region": row["Continent"],
                         "Year": int(year),
-                        "Value": float(value),
+                        "Value": float(value.replace(",", "")),
                     })
 
-        return cleaned
+        return result
 
 
 class JSONReader:
-    """
-    Reads GDP data from a JSON file and sends it to the pipeline.
-    Expects data already in long format:
-    [{"Country": "...", "Region": "...", "Year": 2020, "Value": 123.45}, ...]
-    """
+    # Reads GDP data from a JSON file and sends it to the engine.
 
     def __init__(self, service, filepath):
-        self.service = service  # the engine (PipelineService)
+        self.service = service
         self.filepath = filepath
 
     def run(self):
-        """Read the JSON and pass to the engine."""
         if not os.path.exists(self.filepath):
             raise FileNotFoundError("File not found: " + self.filepath)
 
-        with open(self.filepath, mode="r", encoding="utf-8") as f:
+        with open(self.filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         self.service.execute(data)
