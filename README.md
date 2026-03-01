@@ -1,28 +1,48 @@
-# GDP Analysis Dashboard!
+# SDA Project Phase 2: Modular Orchestration & Dependency Inversion
 
-A beginner-friendly project that explores World Bank GDP data and turns it into clear, visual insights. It is built as a small, modular Python app so each part has a focused job.
+## 📌 Project Overview
+This project is Phase 2 of a data-driven GDP analysis system built in Python. While Phase 1 focused on functional programming principles (using `map`, `filter`, `lambda`) and the Single Responsibility Principle (SRP), Phase 2 transitions the application into a robust **Modular Architecture** applying the **Dependency Inversion Principle (DIP)**.
 
-## What this project does
-- 📥 Loads GDP data from a CSV file.
-- 🌍 Lets you explore global and regional GDP trends.
-- 🏆 Highlights the top/latest economies for a selected year.
-- 📊 Creates charts you can view live or save as images.
+The core objective is to completely decouple the business logic (Core) from data ingestion (Inputs) and data presentation (Outputs) using Python `typing.Protocol` and Dependency Injection.
 
-## What the dashboard shows
-- 🖱️ A simple side panel lets you switch between international and regional views.
-- 🥧 The international view shows a pie chart of regional GDP shares and a bar chart of the top 10 economies.
-- 📈 The regional view shows a GDP growth bar chart for the leading country and a trend line for the region.
+## 🏗️ Architectural Design
 
-## How it works
-- **`main.py`** starts the app, loads the data, and opens the dashboard.
-- **`loader.py`** reads and cleans the CSV file.
-- **`processor.py`** provides filtering and basic calculations.
-- **`dashboard.py`** draws the charts and handles the region selector.
-- **`generate_images.py`** saves the charts to files for reports.
-- **`generate_report.py`** is a starter script you can expand for custom reports.
-- **`config.json`** is a placeholder settings file if you want to add configuration-driven runs later (for example: region, year, or operation choices).
 
-## Data
-The sample dataset lives in `data/gdp.csv` and is loaded automatically when you run the app.
+The system is divided into four distinct logical packages. The **Core** acts as the authority, defining structural interfaces (Protocols) that external plugins must satisfy, ensuring data flows via duck typing without the Core ever knowing about specific file formats or UI frameworks.
 
-GitHub Actions runs the image generator on code pushes and pull requests. The charts are uploaded as downloadable artifacts in the Actions tab.
+* **Main Module (`main.py`)**: The Orchestrator. Parses `config.json`, acts as a Pythonic factory, and wires components together using Dependency Injection.
+* **Core Module (`core/`)**: The Domain Engine. Contains all functional mathematical logic. Owns the `DataSink` and `PipelineService` protocols.
+* **Input Module (`plugins/inputs.py`)**: The Source. Implements multiple readers (e.g., CSV, JSON) interacting purely via the Core's defined protocol.
+* **Output Module (`plugins/outputs.py`)**: The Sink. Implements multiple writers (e.g., Console, GraphicsChart) that satisfy the `DataSink` protocol.
+
+## 📊 Analytical Capabilities
+The Core Engine computes the following configuration-driven metrics using functional programming:
+* Top 10 / Bottom 10 Countries by GDP (for a given continent & year)
+* GDP Growth Rate of each country (for a given continent & date range)
+* Average GDP by Continent (for a given date range)
+* Total Global GDP Trend (for a given date range)
+* Fastest Growing Continent
+* Countries with Consistent GDP Decline
+* Continent Contribution to Global GDP
+
+## 📂 Project Structure
+
+```text
+project_root/
+│
+├── main.py                # The Orchestrator / Entry Point
+├── config.json            # Swappable configuration for pipelines and parameters
+├── README.md              # Project documentation
+│
+├── core/
+│   ├── __init__.py
+│   ├── contracts.py       # Defines DataSink & PipelineService Protocols
+│   └── engine.py          # TransformationEngine (Functional Math Logic)
+│
+├── plugins/
+│   ├── __init__.py
+│   ├── inputs.py          # CSVReader, JSONReader
+│   └── outputs.py         # ConsoleWriter, GraphicsChartWriter
+│
+└── data/
+    └── gdp_data.csv       # Raw source data
