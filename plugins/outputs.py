@@ -1,240 +1,125 @@
 import matplotlib.pyplot as plt
-from matplotlib.widgets import RadioButtons
+from matplotlib.animation import FuncAnimation
+from queue import Empty
 
+class PipelineTelemetry:
+    # Subject in observer pattern: reads queue levels and notifies observers.
+    def __init__(self, queues, max_size):
+        self.queues = queues
+        self.max_size = max_size
+        self.observers = []
 
-class ConsoleWriter:
-    # Prints analysis results to the terminal.
+    def subscribe(self, observer):
+        self.observers.append(observer)
 
-    def write(self, title, records):
-        print("\n" + "=" * 60)
-        print("  " + title)
-        print("=" * 60)
+    def poll_and_notify(self):
+        levels = {}
+        for name, queue in self.queues.items():
+            levels[name] = queue.qsize()
 
-        if not records:
-            print("  No data found.")
-            return
+        for observer in self.observers:
+            observer.on_telemetry_update(levels)
 
-        for i, record in enumerate(records, 1):
-            parts = []
-            for key, value in record.items():
-                if isinstance(value, float) and value > 1000:
-                    parts.append(key + ": $" + "{:,.0f}".format(value))
-                else:
-                    parts.append(key + ": " + str(value))
-            print("  " + str(i) + ". " + " | ".join(parts))
+class Dashboard:
+    # Observer that renders telemetry + charts.
+    def __init__(self, config, processed_queue, telemetry):
+        self.config = config
+        self.processed_queue = processed_queue
+        self.telemetry = telemetry
+        self.telemetry.subscribe(self)
 
-        print()
+        self.x_data = []
+        self.y_values = []
+        self.y_averages = []
+        self.done = False
 
+        self.levels = {"raw": 0, "verified": 0, "processed": 0}
+        self.max_size = telemetry.max_size
 
-class GraphicsChartWriter:
-    # Shows all analysis results in one window.
-    # Radio buttons on the left let the user switch between charts.
-    
+    def on_telemetry_update(self, levels):
+        self.levels = levels
 
-    def __init__(self):
-        self.results = []
+    def run(self):
+        charts = self.config["visualizations"]["data_charts"]
+        telemetry_cfg = self.config["visualizations"]["telemetry"]
 
-    def write(self, title, records):
-        # just store the results for now, we draw them in show()
-        self.results.append({"title": title, "records": records})
+        # Top row for telemetry bars, bottom row for value/average charts.
+        fig = plt.figure(figsize=(14, 8))
+        fig.suptitle("Real-Time Pipeline Dashboard", fontsize=14, fontweight="bold")
 
-    def show(self):
-        if not self.results:
-            return
+        gs = fig.add_gridspec(2, 6, height_ratios=[1, 4], hspace=0.45, wspace=0.5)
 
-        fig = plt.figure(figsize=(16, 8))
+        tel_axes = []
+        tel_keys = []
+        if telemetry_cfg.get("show_raw_stream"):
+            tel_axes.append((fig.add_subplot(gs[0, 0:2]), "Raw Stream"))
+            tel_keys.append("raw")
+        if telemetry_cfg.get("show_intermediate_stream"):
+            tel_axes.append((fig.add_subplot(gs[0, 2:4]), "Verified Stream"))
+            tel_keys.append("verified")
+        if telemetry_cfg.get("show_processed_stream"):
+            tel_axes.append((fig.add_subplot(gs[0, 4:6]), "Processed Stream"))
+            tel_keys.append("processed")
 
-        fig.text(0.55, 0.96, "GDP ANALYSIS DASHBOARD",
-                 ha="center", fontsize=16, fontweight="bold")
+        ax_values = fig.add_subplot(gs[1, 0:3])
+        ax_avg = fig.add_subplot(gs[1, 3:6])
 
-        # radio buttons on the left side
-        option_labels = ["Option " + str(i + 1) for i in range(len(self.results))]
+        def update(frame):
+            # Poll first, then consume a small batch of processed packets.
+            self.telemetry.poll_and_notify()
 
-        radio_ax = fig.add_axes([0.01, 0.25, 0.10, 0.55])
-        radio_ax.set_title("Select\nAnalysis", fontweight="bold", fontsize=9)
-        radio = RadioButtons(radio_ax, option_labels, activecolor="#4CAF50")
+            if not self.done:
+                for _ in range(2):
+                    try:
+                        packet = self.processed_queue.get_nowait()
+                    except Empty:
+                        break
 
-        for label in radio.labels:
-            label.set_fontsize(8)
+                    if packet is None:
+                        self.done = True
+                        break
 
-        # this function picks the right chart type and draws it
-        def draw_chart(index):
-            # remove old chart (but keep the radio buttons)
-            for a in fig.axes:
-                if a is not radio_ax:
-                    fig.delaxes(a)
+                    self.x_data.append(packet[charts[0]["x_axis"]])
+                    self.y_values.append(packet[charts[0]["y_axis"]])
+                    self.y_averages.append(packet[charts[1]["y_axis"]])
 
-            title = self.results[index]["title"]
-            records = self.results[index]["records"]
+            for i, (ax, label) in enumerate(tel_axes):
+                self._draw_telemetry_bar(ax, label, self.levels.get(tel_keys[i], 0))
 
-            if not records:
-                ax = fig.add_axes([0.18, 0.10, 0.78, 0.80])
-                ax.text(0.5, 0.5, "No data found.", ha="center", va="center")
-                ax.set_title(title, fontsize=13, fontweight="bold")
-                ax.axis("off")
-                fig.canvas.draw_idle()
-                return
+            self._draw_line(ax_values, charts[0]["title"], self.x_data, self.y_values, "#2196F3")
+            self._draw_line(ax_avg, charts[1]["title"], self.x_data, self.y_averages, "#4CAF50")
 
-            if "Top 10" in title:
-                draw_bar(title, records, "Country", "GDP", "#2196F3")
-            elif "Bottom 10" in title:
-                draw_bar(title, records, "Country", "GDP", "#FF5722")
-            elif "Growth Rate" in title and "Continent" not in title:
-                draw_horizontal_bar(title, records, "Country", "Growth Rate (%)", "#4CAF50")
-            elif "Average GDP" in title:
-                draw_bar(title, records, "Continent", "Average GDP", "#9C27B0")
-            elif "Global GDP Trend" in title:
-                draw_line(title, records, "Year", "Total Global GDP")
-            elif "Fastest Growing" in title:
-                draw_bar(title, records, "Continent", "Growth Rate (%)", "#FF9800")
-            elif "Consistent" in title:
-                draw_decline_bar(title, records)
-            elif "Contribution" in title:
-                draw_pie(title, records, "Continent", "Contribution (%)")
-
-            fig.canvas.draw_idle()
-
-        # chart drawing functions
-
-        def draw_bar(title, records, label_key, value_key, color):
-            ax = fig.add_axes([0.20, 0.18, 0.75, 0.70])
-
-            labels = [str(r[label_key]) for r in records]
-            values = [r[value_key] for r in records]
-
-            # show GDP in billions for readability
-            y_label = value_key
-            if value_key in ("GDP", "Average GDP"):
-                values = [v / 1e9 for v in values]
-                y_label = value_key + " (Billion $)"
-
-            bars = ax.bar(range(len(labels)), values, color=color,
-                          alpha=0.8, edgecolor="black", width=0.6)
-
-            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
-            ax.set_xlabel(label_key)
-            ax.set_ylabel(y_label)
-            ax.set_xticks(range(len(labels)))
-            ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=8)
-            ax.grid(True, axis="y", linestyle="--", alpha=0.4)
-
-            # put the value on top of each bar
-            for bar in bars:
-                height = bar.get_height()
-                if height > 0:
-                    ax.text(bar.get_x() + bar.get_width() / 2, height,
-                            "{:,.0f}".format(height),
-                            ha="center", va="bottom", fontsize=6)
-
-        def draw_horizontal_bar(title, records, label_key, value_key, color):
-            ax = fig.add_axes([0.28, 0.08, 0.67, 0.82])
-
-            # only show top 20 so it's readable
-            records = records[:20]
-            labels = [str(r[label_key]) for r in records][::-1]
-            values = [r[value_key] for r in records][::-1]
-
-            bars = ax.barh(range(len(labels)), values, color=color,
-                           alpha=0.8, edgecolor="black", height=0.6)
-
-            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
-            ax.set_xlabel(value_key)
-            ax.set_yticks(range(len(labels)))
-            ax.set_yticklabels(labels, fontsize=7)
-            ax.grid(True, axis="x", linestyle="--", alpha=0.4)
-
-            for bar in bars:
-                width = bar.get_width()
-                ax.text(width, bar.get_y() + bar.get_height() / 2,
-                        " " + str(round(width, 1)) + "%",
-                        ha="left", va="center", fontsize=6)
-
-        def draw_line(title, records, x_key, y_key):
-            ax = fig.add_axes([0.20, 0.15, 0.75, 0.73])
-
-            x = [r[x_key] for r in records]
-            y = [r[y_key] / 1e12 for r in records]  # show in trillions
-
-            ax.plot(x, y, marker="o", linewidth=2, color="#4CAF50", markersize=5)
-            ax.fill_between(x, y, alpha=0.15, color="#4CAF50")
-
-            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
-            ax.set_xlabel(x_key)
-            ax.set_ylabel(y_key + " (Trillion $)")
-            ax.grid(True, linestyle="--", alpha=0.4)
-
-            # label the first and last points
-            ax.annotate("{:,.1f}T".format(y[0]), (x[0], y[0]),
-                        textcoords="offset points", xytext=(0, 10),
-                        fontsize=8, ha="center")
-            ax.annotate("{:,.1f}T".format(y[-1]), (x[-1], y[-1]),
-                        textcoords="offset points", xytext=(0, 10),
-                        fontsize=8, ha="center")
-
-        def draw_pie(title, records, label_key, value_key):
-            ax = fig.add_axes([0.22, 0.05, 0.70, 0.85])
-            ax.set_aspect("equal")
-
-            labels = [r[label_key] for r in records]
-            values = [r[value_key] for r in records]
-            colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"]
-
-            wedges, texts, autotexts = ax.pie(
-                values, colors=colors, startangle=140,
-                autopct="%1.1f%%", textprops={"fontsize": 9},
-                pctdistance=0.75,
-            )
-
-            for t in autotexts:
-                t.set_fontweight("bold")
-
-            ax.set_title(title, fontsize=13, fontweight="bold", pad=15)
-            ax.legend(wedges, labels, loc="lower center",
-                      bbox_to_anchor=(0.5, -0.05), ncol=3, fontsize=9)
-
-        def draw_decline_bar(title, records):
-            if not records:
-                ax = fig.add_axes([0.18, 0.10, 0.78, 0.80])
-                ax.text(0.5, 0.5, "No declining countries found.",
-                        ha="center", va="center", fontsize=14)
-                ax.set_title(title, fontsize=13, fontweight="bold")
-                ax.axis("off")
-                return
-
-            ax = fig.add_axes([0.20, 0.18, 0.75, 0.70])
-
-            countries = [r["Country"] for r in records]
-            keys = [k for k in records[0].keys() if k != "Country"]
-            start_key = keys[0]
-            end_key = keys[1]
-
-            start_values = [r[start_key] / 1e9 for r in records]
-            end_values = [r[end_key] / 1e9 for r in records]
-
-            w = 0.35
-            positions = list(range(len(countries)))
-
-            ax.bar([p - w / 2 for p in positions], start_values, w,
-                   label=start_key, color="#42A5F5", edgecolor="black")
-            ax.bar([p + w / 2 for p in positions], end_values, w,
-                   label=end_key, color="#EF5350", edgecolor="black")
-
-            ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
-            ax.set_xlabel("Country")
-            ax.set_ylabel("GDP (Billion $)")
-            ax.set_xticks(positions)
-            ax.set_xticklabels(countries, rotation=30, ha="right", fontsize=9)
-            ax.legend(fontsize=9)
-            ax.grid(True, axis="y", linestyle="--", alpha=0.4)
-
-        # when a radio button is clicked, redraw the chart
-
-        def on_select(label):
-            index = option_labels.index(label)
-            draw_chart(index)
-
-        radio.on_clicked(on_select)
-
-        # show the first chart by default
-        draw_chart(0)
+        self.anim = FuncAnimation(fig, update, interval=200, cache_frame_data=False)
         plt.show()
+
+    def _draw_telemetry_bar(self, ax, title, level):
+        # Green/yellow/red indicates low/medium/high pressure.
+        ax.clear()
+        ratio = level / self.max_size if self.max_size > 0 else 0
+
+        if ratio < 0.5:
+            color = "#4CAF50"
+        elif ratio < 0.8:
+            color = "#FFC107"
+        else:
+            color = "#F44336"
+
+        ax.barh([0], [1.0], color="#E0E0E0", height=0.5)
+        ax.barh([0], [ratio], color=color, height=0.5)
+        ax.set_xlim(0, 1)
+        ax.set_title(title, fontsize=9, fontweight="bold")
+        ax.set_yticks([])
+        ax.set_xticks([])
+        ax.text(0.5, 0, "{}/{}".format(level, self.max_size),
+                ha="center", va="center", fontsize=8, fontweight="bold")
+
+    def _draw_line(self, ax, title, x_data, y_data, color):
+        # Draw one live line chart.
+        ax.clear()
+        if x_data and y_data:
+            ax.plot(x_data, y_data, linewidth=1.2, color=color)
+        ax.set_title(title, fontsize=10, fontweight="bold")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Value")
+        ax.grid(True, linestyle="--", alpha=0.4)
+        ax.tick_params(axis="x", rotation=30, labelsize=7)
