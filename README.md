@@ -78,9 +78,7 @@ project_root/
 │
 ├── main.py                # Orchestrator / entry point
 ├── config.json            # Full pipeline configuration
-├── README.md              # Project documentation (optional GitHub default)
-├── readme.MD              # This documentation file
-├── readme.txt             # TA quick-start instructions
+├── README.md              # Project documentation 
 │
 ├── Core/
 │   ├── __init__.py
