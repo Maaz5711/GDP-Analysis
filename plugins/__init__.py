@@ -1,1 +1,1 @@
-# Plugins package — contains input and output implementations
+# Plugins package marker
